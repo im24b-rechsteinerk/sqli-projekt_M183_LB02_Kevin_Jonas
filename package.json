@@ -1,0 +1,20 @@
+{
+  "name": "sqli-projekt_m183_lb02_kevin_jonas",
+  "version": "1.0.0",
+  "description": "Repository für die LB02 vom Modul 183",
+  "homepage": "https://github.com/im24b-rechsteinerk/sqli-projekt_M183_LB02_Kevin_Jonas#readme",
+  "bugs": {
+    "url": "https://github.com/im24b-rechsteinerk/sqli-projekt_M183_LB02_Kevin_Jonas/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/im24b-rechsteinerk/sqli-projekt_M183_LB02_Kevin_Jonas.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
