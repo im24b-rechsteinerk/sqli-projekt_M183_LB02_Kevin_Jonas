@@ -8,7 +8,7 @@ async function seed() {
         connection = await mysql.createConnection({
             host: 'localhost',
             user: 'root',
-            password: 'DEIN_MYSQL_PASSWORT',
+            password: '',
             multipleStatements: true
         });
         const schema = fs.readFileSync(path.join(__dirname, 'shema.sql'), 'utf8');

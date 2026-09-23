@@ -6,7 +6,7 @@ CREATE TABLE employee (
     id INT AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     second_name VARCHAR(50) NOT NULL,
-    birthdate DATE NOT NULL,
+    birthdate DATE NOT NULL
 
 );
 
