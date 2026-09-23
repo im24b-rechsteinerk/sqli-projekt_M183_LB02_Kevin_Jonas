@@ -91,6 +91,19 @@ app.get('/payroll', async (req, res) => {
         return res.status(500).json({ sql, error: errorText(error) });
     }
 });
+app.post('/payroll/update', async (req, res) => {
+    const id = req.body.id ?? '';
+    const amount = req.body.payroll_amount ?? '';
+    const sql =
+        "UPDATE payroll SET payroll_amount = '" + amount +
+        "' WHERE id = '" + id + "'";
+    try {
+        const [result] = await pool.query(sql);
+        return res.json({ sql, affectedRows: result.affectedRows });
+    } catch (error) {
+        return res.status(500).json({ sql, error: errorText(error) });
+    }
+});
 
 app.listen(PORT, () => {
     console.log('Vulnerable server listening on http://localhost:' + PORT);
