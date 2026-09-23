@@ -1,0 +1,16 @@
+{
+  "employees": [
+    { "first_name": "Anna",   "second_name": "Müller",  "birthdate": "1990-05-14" },
+    { "first_name": "Beat",   "second_name": "Keller",  "birthdate": "1985-11-02" },
+    { "first_name": "Chiara", "second_name": "Rossi",   "birthdate": "1998-03-21" }
+  ],
+  "payroll": [
+    { "employee_id": 1, "payroll_amount": 6500.00 },
+    { "employee_id": 2, "payroll_amount": 8200.00 },
+    { "employee_id": 3, "payroll_amount": 5400.00 }
+  ],
+  "users": [
+    { "username": "admin",    "password": "geheim123", "role": "admin" },
+    { "username": "amueller", "password": "passwort1", "role": "employee" }
+  ]
+}
