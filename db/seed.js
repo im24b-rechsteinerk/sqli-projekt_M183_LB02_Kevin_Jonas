@@ -1,7 +1,6 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
-
-
+const path = require('path');
 
 async function seed() {
     let connection;
@@ -12,12 +11,10 @@ async function seed() {
             password: 'DEIN_MYSQL_PASSWORT',
             multipleStatements: true
         });
-        //reads shema and resets the connection
-        const schema = fs.readFileSync('./db/schema.sql', 'utf8');
+        const schema = fs.readFileSync(path.join(__dirname, 'shema.sql'), 'utf8');
         await connection.query(schema);
 
-        // gets data
-        const data = JSON.parse(fs.readFileSync('./db/seed-data.json', 'utf8'));
+        const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data-seed.json'), 'utf8'));
 
         //inserts data into database
         for (const e of data.employees) {

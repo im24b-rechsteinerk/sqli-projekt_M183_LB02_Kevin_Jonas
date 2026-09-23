@@ -1,82 +1,94 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const { DatabaseSync } = require('node:sqlite');
+const mysql = require('mysql2/promise');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const dbFile = path.join(__dirname, '..', 'db', 'app.db');
-const schemaFile = path.join(__dirname, '..', 'db', 'shema.sql');
-const db = new DatabaseSync(dbFile);
+const pool = mysql.createPool({
+    host: 'localhost',
+    user: 'root',
+    password: 'DEIN_MYSQL_PASSWORT',
+    database: 'firma_datenbank',
+    waitForConnections: true,
+    connectionLimit: 10
+});
 
-const usersTable = db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'")
-    .get();
+app.use(express.json());
 
-if (!usersTable) {
-    db.exec(fs.readFileSync(schemaFile, 'utf8'));
-}
-
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.post('/login', (req, res) => {
-    const email = req.body.email ?? '';
+app.post('/login', async (req, res) => {
+    const username = req.body.username ?? '';
     const password = req.body.password ?? '';
     const sql =
-        "SELECT id, name, email FROM users WHERE email = '" +
-        email +
+        "SELECT id, username, role FROM user WHERE username = '" +
+        username +
         "' AND password = '" +
         password +
         "'";
 
     try {
-        const user = db.prepare(sql).get();
-        if (!user) {
-            return renderPage(res, 'Anmeldung', '<p>Anmeldung fehlgeschlagen.</p>', sql);
+        const [rows] = await pool.query(sql);
+        if (rows.length === 0) {
+            return res.status(401).json({ sql, error: 'Anmeldung fehlgeschlagen' });
         }
-        return renderPage(
-            res,
-            'Anmeldung',
-            '<p>Angemeldet als ' + escapeHtml(user.name) + ' (' + escapeHtml(user.email) + ').</p>',
-            sql
-        );
+        return res.json({ sql, user: rows[0] });
     } catch (error) {
-        return renderPage(res, 'Anmeldung', '<p class="error">' + escapeHtml(error.message) + '</p>', sql, 500);
+        return res.status(500).json({ sql, error: errorText(error) });
     }
 });
 
-app.get('/employee', (req, res) => {
-    const name = req.query.name ?? '';
-    const sql = "SELECT id, name, email FROM employees WHERE name = '" + name + "'";
+app.get('/employee', async (req, res) => {
+    const firstName = req.query.first_name ?? '';
+    const secondName = req.query.second_name ?? '';
+    let sql = 'SELECT id, first_name, second_name, birthdate FROM employee WHERE 1 = 1';
+
+    if (firstName !== '') {
+        sql += " AND first_name = '" + firstName + "'";
+    }
+    if (secondName !== '') {
+        sql += " AND second_name = '" + secondName + "'";
+    }
 
     try {
-        const employees = db.prepare(sql).all();
-        return renderPage(res, 'Suche', renderTable(employees), sql);
+        const [rows] = await pool.query(sql);
+        return res.json({ sql, rows });
     } catch (error) {
-        return renderPage(res, 'Suche', '<p class="error">' + escapeHtml(error.message) + '</p>', sql, 500);
+        return res.status(500).json({ sql, error: errorText(error) });
     }
 });
 
-app.post('/employee', (req, res) => {
-    const name = req.body.name ?? '';
-    const email = req.body.email ?? '';
-    const password = req.body.password ?? '';
+app.post('/employee', async (req, res) => {
+    const firstName = req.body.first_name ?? '';
+    const secondName = req.body.second_name ?? '';
+    const birthdate = req.body.birthdate ?? '';
     const sql =
-        "INSERT INTO employees (name, email, password) VALUES ('" +
-        name +
+        "INSERT INTO employee (first_name, second_name, birthdate) VALUES ('" +
+        firstName +
         "', '" +
-        email +
+        secondName +
         "', '" +
-        password +
+        birthdate +
         "')";
 
     try {
-        db.exec(sql);
-        return renderPage(res, 'Erfassung', '<p>Mitarbeitende Person wurde gespeichert.</p>', sql);
+        const [result] = await pool.query(sql);
+        return res.status(201).json({ sql, id: result.insertId });
     } catch (error) {
-        return renderPage(res, 'Erfassung', '<p class="error">' + escapeHtml(error.message) + '</p>', sql, 500);
+        return res.status(500).json({ sql, error: errorText(error) });
+    }
+});
+
+app.get('/payroll', async (req, res) => {
+    const employeeId = req.query.employee_id ?? '';
+    const sql =
+        "SELECT id, employee_id, payroll_amount FROM payroll WHERE employee_id = '" +
+        employeeId +
+        "'";
+
+    try {
+        const [rows] = await pool.query(sql);
+        return res.json({ sql, rows });
+    } catch (error) {
+        return res.status(500).json({ sql, error: errorText(error) });
     }
 });
 
@@ -84,44 +96,12 @@ app.listen(PORT, () => {
     console.log('Vulnerable server listening on http://localhost:' + PORT);
 });
 
-function renderTable(rows) {
-    if (rows.length === 0) {
-        return '<p>Keine Treffer.</p>';
+function errorText(error) {
+    if (error.message) {
+        return error.message;
     }
-
-    const header = Object.keys(rows[0])
-        .map((column) => '<th>' + escapeHtml(column) + '</th>')
-        .join('');
-    const body = rows
-        .map((row) => {
-            const cells = Object.values(row)
-                .map((value) => '<td>' + escapeHtml(value) + '</td>')
-                .join('');
-            return '<tr>' + cells + '</tr>';
-        })
-        .join('');
-
-    return '<table><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table>';
-}
-
-function renderPage(res, title, body, sql, status = 200) {
-    res.status(status).send(
-        '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">' +
-            '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-            '<title>' + escapeHtml(title) + '</title>' +
-            '<link rel="stylesheet" href="/style.css"></head><body><main>' +
-            '<h1>' + escapeHtml(title) + '</h1>' +
-            body +
-            '<h2>Ausgeführtes SQL</h2><pre>' + escapeHtml(sql) + '</pre>' +
-            '<p><a class="button" href="/">Zurück</a></p>' +
-            '</main></body></html>'
-    );
-}
-
-function escapeHtml(value) {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;');
+    if (error.errors && error.errors.length > 0) {
+        return error.errors.map((item) => item.message).join('; ');
+    }
+    return error.code || 'Unbekannter Datenbankfehler';
 }
